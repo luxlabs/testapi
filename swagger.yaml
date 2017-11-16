@@ -1,0 +1,385 @@
+swagger: '2.0'
+info:
+  title: su1.3scale.net
+  version: '1.0'
+host: su1.3scale.net
+basePath: /
+schemes:
+  - https
+paths:
+  /transactions.xml:
+    post:
+      parameters:
+        - description: Your service api key with 3scale (also known as service token).
+          in: query
+          name: service_token
+          required: true
+          type: string
+        - description: Service id. Required.
+          in: query
+          name: service_id
+          required: true
+          type: string
+        - description: >-
+            Transactions to be reported. There is a limit of 1000 transactions
+            to be reported on a single request.
+          in: query
+          items:
+            type: string
+          name: transactions
+          required: true
+          type: array
+      responses:
+        '200':
+          description: No response was specified
+      description: >-
+        <p>Report the transactions to 3scale backend.<p>This operation updates
+        the metrics passed in the usage parameter. You can send up to 1K
+        transactions in a single POST request. Transactions are processed
+        asynchronously by the 3scale's backend.<p>Transactions from a single
+        batch are reported only if all of them are valid. If there is an error
+        in processing of at least one of them, none is reported.<p>Note that a
+        batch can only report transactions to the same service,
+        <em>service_id</em> is at the same level that <em>service_token</em>.
+        Multiple report calls will have to be issued to report transactions to
+        different services.<p>Be aware that reporting metrics that are limited
+        at the time of reporting will have no effect.<p>Supported <code
+        class='http'>Content-Type</code> values for this POST call are: <code
+        class='http'>application/x-www-form-urlencoded</code>.
+      summary: Report (OAuth authentication pattern)
+  /transactions/authorize.xml:
+    get:
+      parameters:
+        - description: Your service api key with 3scale (also known as service token).
+          in: query
+          name: service_token
+          required: true
+          type: string
+        - description: Service id. Required.
+          in: query
+          name: service_id
+          required: true
+          type: string
+        - description: >-
+            User Key (identifier and shared secret of the application if the
+            auth. pattern is Api Key)
+          in: query
+          name: user_key
+          required: true
+          type: string
+        - description: >-
+            Referrer IP Address or Domain. Required only if referrer filtering
+            is enabled. If special value '*' (wildcard) is passed, the referrer
+            check is bypassed.
+          in: query
+          name: referrer
+          required: false
+          type: string
+        - description: >-
+            User id. String identifying an end user. Required only when the
+            application is rate limiting end users. The End User plans feature
+            is not available in all 3scale plans.
+          in: query
+          name: user_id
+          type: string
+        - description: >-
+            Predicted Usage. Actual usage will need to be reported with a report
+            or an authrep.
+          in: query
+          name: usage
+          required: false
+          type: hash
+      responses:
+        '200':
+          description: No response was specified
+      tags:
+        - authorize
+        - user_key
+      deprecated: false
+      description: >-
+        Read-only operation to authorize an application in the App Key
+        authentication pattern. <p>It is used to check if a particular
+        application exists, is active and is within its usage limits. It can be
+        optionally used to authenticate a call using an application key. It's
+        possible to pass a 'predicted usage' to the authorize call. This can
+        serve two purposes:<p>1) To make sure an API call won't go over the
+        limits before the call is made, if the usage of the call is known in
+        advance. In this case, the estimated usage can be passed to the
+        authorize call, and it will respond whether the actual API call is still
+        within limit. And, <p>2) To limit the authorization only to a subset of
+        metrics. If usage is passed in, only the metrics listed in it will be
+        checked against the limits. For example: There are two metrics defined:
+        <em>searches</em> and <em>updates</em>. <em>updates</em> are already
+        over limit, but <em>searches</em> are not. In this case, the user should
+        still be allowed to do a search call, but not an update
+        one.<p><b>Note:</b> Even if the predicted usage is passed in, authorize
+        is still a <b>read-only</b> operation. You have to make the report call
+        to report the usage. <p>The response can have an http response code:
+        <code class='http'>200</code> OK (if authorization is granted), <code
+        class='http'>409</code> (if it's not granted, typically application over
+        limits or keys missing, check 'reason' tag),  or <code
+        class='http'>403</code> (for authentication errors, check 'error' tag)
+        and <code class='http'>404</code> (not found).
+      operationId: authorize_user_key
+      summary: Authorize (API Key authentication pattern)
+  /transactions/authrep.xml:
+    get:
+      parameters:
+        - description: Your service api key with 3scale (also known as service token).
+          in: query
+          name: service_token
+          required: true
+          type: string
+        - description: Service id. Required.
+          in: query
+          name: service_id
+          required: true
+          type: string
+        - description: >-
+            User Key (identifier and shared secret of the application if the
+            auth. pattern is Api Key)
+          in: query
+          name: user_key
+          required: true
+          type: string
+        - description: >-
+            Referrer IP Address or Domain. Required only if referrer filtering
+            is enabled. If special value '*' (wildcard) is passed, the referrer
+            check is bypassed.
+          in: query
+          name: referrer
+          required: false
+          type: string
+        - description: >-
+            User id. String identifying an end user. Required only when the
+            application is rate limiting end users. The End User plans feature
+            is not available in all 3scale plans.
+          in: query
+          name: user_id
+          type: string
+        - description: >-
+            Usage will increment the metrics with the values passed. The value
+            can be only a positive integer (e.g. 1, 50). Reporting usage[hits]=1
+            will increment the hits counter by +1.
+          in: query
+          name: usage
+          required: false
+          type: hash
+        - description: >-
+            Request Log allows to log the requests/responses/status_codes of
+            your API back to 3scale to maintain a log of the latest activity on
+            your API. Request Logs are optional and not available in all 3scale
+            plans.
+          in: query
+          name: log
+          required: false
+          type: hash
+      responses:
+        '200':
+          description: No response was specified
+      description: >-
+        <p>Authrep is a <b>'one-shot'</b> operation to authorize an application
+        and report the associated transaction at the same time.<p>The main
+        difference between this call and the regular authorize call is that
+        usage will be reported if the authorization is successful. Authrep is
+        the most convenient way to integrate your API with the 3scale's Service
+        Manangement API since it does a 1:1 mapping between a request to your
+        API and a request to 3scale's API.<p>If you do not want to do a request
+        to 3scale for each request to your API or batch the reports you should
+        use the Authorize and Report methods instead.<p>Authrep is <b>not a
+        read-only</b> operation and will increment the values if the
+        authorization step is a success.
+      summary: AuthRep (Authorize + Report for the API Key authentication pattern)
+  /transactions/oauth_authorize.xml:
+    get:
+      parameters:
+        - description: Your service api key with 3scale (also known as service token).
+          in: query
+          name: service_token
+          required: true
+          type: string
+        - description: Service id. Required.
+          in: query
+          name: service_id
+          required: true
+          type: string
+        - description: >-
+            OAuth token used for authorizing if you don't use client_id with
+            client_secret.
+          in: query
+          name: access_token
+          required: false
+          type: string
+        - description: >-
+            Client Id (identifier of the application if the auth. pattern is
+            OAuth, note that client_id == app_id)
+          in: query
+          name: app_id
+          required: false
+          type: string
+        - description: >-
+            Referrer IP Address or Domain. Required only if referrer filtering
+            is enabled. If special value '*' (wildcard) is passed, the referrer
+            check is bypassed.
+          in: query
+          name: referrer
+          required: false
+          type: string
+        - description: >-
+            User id. String identifying an end user. Used only when the
+            application is rate limiting end users and the specified token is
+            not associated to a user. The End User plans feature is not
+            available in all 3scale plans.
+          in: query
+          name: user_id
+          type: string
+        - description: >-
+            Predicted Usage. Actual usage will need to be reported with a report
+            or an authrep.
+          in: query
+          name: usage
+          required: false
+          type: hash
+        - description: Optional redirect URL for OAuth. Will be validated if sent.
+          in: query
+          name: redirect_url
+          required: false
+          type: string
+        - description: >-
+            Optional redirect URI for OAuth. This is the same as 'redirect_url',
+            but if used you should expect a matching 'redirect_uri' response
+            field.
+          in: query
+          name: redirect_uri
+          required: false
+          type: string
+      responses:
+        '200':
+          description: No response was specified
+      tags:
+        - authorize
+        - user_key
+      deprecated: false
+      description: >-
+        <p>Read-only operation to authorize an application in the OAuth
+        authentication pattern.<p>This calls returns extra data (secret and
+        redirect_url) needed to power OAuth APIs. It's only available for users
+        with OAuth enabled APIs. <p>It is used to check if a particular
+        application exists, is active and is within its usage limits. It can be
+        optionally used to authenticate a call using an application key. It's
+        possible to pass a 'predicted usage' to the authorize call. This can
+        serve two purposes:<p>1) To make sure an API call won't go over the
+        limits before the call is made, if the usage of the call is known in
+        advance. In this case, the estimated usage can be passed to the
+        authorize call, and it will respond whether the actual API call is still
+        within limit. And, <p>2) To limit the authorization only to a subset of
+        metrics. If usage is passed in, only the metrics listed in it will be
+        checked against the limits. For example: There are two metrics defined:
+        <em>searches</em> and <em>updates</em>. <em>updates</em> are already
+        over limit, but <em>searches</em> are not. In this case, the user should
+        still be allowed to do a search call, but not an update
+        one.<p><b>Note:</b> Even if the predicted usage is passed in, authorize
+        is still a <b>read-only</b> operation. You have to make the report call
+        to report the usage. <p>The response can have an http response code:
+        <code class='http'>200</code> OK (if authorization is granted), <code
+        class='http'>409</code> (if it's not granted, typically application over
+        limits or keys missing, check 'reason' tag),  or <code
+        class='http'>403</code> (for authentication errors, check 'error' tag)
+        and <code class='http'>404</code> (not found).
+      operationId: oauth_authorize
+      summary: Authorize (OAuth authentication mode pattern)
+  /transactions/oauth_authrep.xml:
+    get:
+      parameters:
+        - description: Your service api key with 3scale (also known as service token).
+          in: query
+          name: service_token
+          required: true
+          type: string
+        - description: Service id. Required.
+          in: query
+          name: service_id
+          required: true
+          type: string
+        - description: >-
+            OAuth token used for authorizing if you don't use client_id with
+            client_secret.
+          in: query
+          name: access_token
+          required: false
+          type: string
+        - description: >-
+            Client Id (identifier of the application if the auth. pattern is
+            OAuth, note that client_id == app_id)
+          in: query
+          name: app_id
+          required: false
+          type: string
+        - description: >-
+            Referrer IP Address or Domain. Required only if referrer filtering
+            is enabled. If special value '*' (wildcard) is passed, the referrer
+            check is bypassed.
+          in: query
+          name: referrer
+          required: false
+          type: string
+        - description: >-
+            User id. String identifying an end user. Used only when the
+            application is rate limiting end users and the specified token is
+            not associated to a user. The End User plans feature is not
+            available in all 3scale plans.
+          in: query
+          name: user_id
+          type: string
+        - description: >-
+            Usage will increment the metrics with the values passed. The value
+            can be only a positive integer (e.g. 1, 50). Reporting usage[hits]=1
+            will increment the hits counter by +1.
+          in: query
+          name: usage
+          required: false
+          type: hash
+        - description: >-
+            Request Log allows to log the requests/responses/status_codes of
+            your API back to 3scale to maintain a log of the latest activity on
+            your API. Request Logs are optional and not available in all 3scale
+            plans.
+          in: query
+          name: log
+          required: false
+          type: hash
+        - description: Optional redirect URL for OAuth. Will be validated if sent.
+          in: query
+          name: redirect_url
+          required: false
+          type: string
+        - description: >-
+            Optional redirect URI for OAuth. This is the same as 'redirect_url',
+            but if used you should expect a matching 'redirect_uri' response
+            field.
+          in: query
+          name: redirect_uri
+          required: false
+          type: string
+      responses:
+        '200':
+          description: No response was specified
+      deprecated: false
+      description: >-
+        <p>Authrep is a <b>'one-shot'</b> operation to authorize an application
+        and report the associated transaction at the same time in the OAuth
+        authentication pattern.<p>The main difference between this call and the
+        regular authorize call is that usage will be reported if the
+        authorization is successful. Authrep is the most convenient way to
+        integrate your API with the 3scale's Service Manangement API since it
+        does a 1:1 mapping between a request to your API and a request to
+        3scale's API.<p>If you do not want to do a request to 3scale for each
+        request to your API or batch the reports you should use the Authorize
+        and Report methods instead.<p>Authrep is <b>not a read-only</b>
+        operation and will increment the values if the authorization step is a
+        success.<p>This calls returns extra data (secret and redirect_url)
+        needed to power OAuth APIs. It's only available for users with OAuth
+        enabled APIs.
+      operationId: oauth_authrep
+      summary: AuthRep (OAuth authentication mode pattern)
+
